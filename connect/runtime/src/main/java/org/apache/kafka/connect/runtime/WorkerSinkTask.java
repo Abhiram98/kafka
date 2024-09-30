@@ -601,10 +601,7 @@ class WorkerSinkTask extends WorkerTask {
             task.put(new ArrayList<>(messageBatch));
             // if errors raised from the operator were swallowed by the task implementation, an
             // exception needs to be thrown to kill the task indicating the tolerance was exceeded
-            if (retryWithToleranceOperator.failed() && !retryWithToleranceOperator.withinToleranceLimits()) {
-                throw new ConnectException("Tolerance exceeded in error handler",
-                    retryWithToleranceOperator.error());
-            }
+            maybeThrowAsyncError();
             recordBatch(messageBatch.size());
             sinkTaskMetricsGroup.recordPut(time.milliseconds() - start);
             currentOffsets.putAll(origOffsets);
@@ -630,6 +627,13 @@ class WorkerSinkTask extends WorkerTask {
             log.error("{} Task threw an uncaught and unrecoverable exception. Task is being killed and will not "
                     + "recover until manually restarted. Error: {}", this, t.getMessage(), t);
             throw new ConnectException("Exiting WorkerSinkTask due to unrecoverable exception.", t);
+        }
+    }
+
+    private void maybeThrowAsyncError() {
+        if (retryWithToleranceOperator.failed() && !retryWithToleranceOperator.withinToleranceLimits()) {
+            throw new ConnectException("Tolerance exceeded in error handler",
+                retryWithToleranceOperator.error());
         }
     }
 
