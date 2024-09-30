@@ -203,7 +203,7 @@ public class AclControlManagerTest {
     @Test
     public void testLoadSnapshot() {
         SnapshotRegistry snapshotRegistry = new SnapshotRegistry(new LogContext());
-        snapshotRegistry.getOrCreateSnapshot(0);
+        idempotentCreateSnapshot(snapshotRegistry);
         AclControlManager manager = new AclControlManager.Builder().
             setSnapshotRegistry(snapshotRegistry).
             build();
@@ -235,6 +235,10 @@ public class AclControlManagerTest {
         snapshotRegistry.revertToSnapshot(0);
         authorizer.loadSnapshot(manager.idToAcl());
         assertTrue(manager.idToAcl().isEmpty());
+    }
+
+    private void idempotentCreateSnapshot(SnapshotRegistry snapshotRegistry) {
+        snapshotRegistry.getOrCreateSnapshot(0);
     }
 
     @Test
