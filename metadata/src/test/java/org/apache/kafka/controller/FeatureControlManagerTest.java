@@ -185,7 +185,7 @@ public class FeatureControlManagerTest {
             updateMap("bar", 3), Collections.emptyMap(), false);
         assertEquals(Collections.singletonMap("bar", ApiError.NONE), result.response());
         manager.replay((FeatureLevelRecord) result.records().get(0).message());
-        snapshotRegistry.getOrCreateSnapshot(3);
+        idempotentCreateSnapshot(snapshotRegistry);
 
         assertEquals(ControllerResult.atomicOf(emptyList(), Collections.
                 singletonMap("bar", new ApiError(Errors.INVALID_UPDATE_VERSION,
@@ -210,6 +210,10 @@ public class FeatureControlManagerTest {
                 Collections.singletonMap("bar", FeatureUpdate.UpgradeType.SAFE_DOWNGRADE),
                 false)
         );
+    }
+
+    private void idempotentCreateSnapshot(SnapshotRegistry snapshotRegistry) {
+        snapshotRegistry.getOrCreateSnapshot(3);
     }
 
     @Test
