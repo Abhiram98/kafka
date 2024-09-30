@@ -611,6 +611,10 @@ public class GroupCoordinatorService implements GroupCoordinator {
         });
 
         final CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        return combineFutures(futures, allFutures);
+    }
+
+    private CompletableFuture<List<ConsumerGroupDescribeResponseData.DescribedGroup>> combineFutures(List<CompletableFuture<List<ConsumerGroupDescribeResponseData.DescribedGroup>>> futures, CompletableFuture<Void> allFutures) {
         return allFutures.thenApply(v -> {
             final List<ConsumerGroupDescribeResponseData.DescribedGroup> res = new ArrayList<>();
             futures.forEach(future -> res.addAll(future.join()));
