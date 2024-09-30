@@ -1086,9 +1086,13 @@ public class KafkaStreams implements AutoCloseable {
         );
         streamThread.setStateListener(streamStateListener);
         threads.add(streamThread);
-        threadState.put(streamThread.getId(), streamThread.state());
+        registerStreamThread(streamThread);
         queryableStoreProvider.addStoreProviderForThread(streamThread.getName(), new StreamThreadStateStoreProvider(streamThread));
         return streamThread;
+    }
+
+    private void registerStreamThread(StreamThread streamThread) {
+        threadState.put(streamThread.getId(), streamThread.state());
     }
 
     static Metrics getMetrics(final StreamsConfig config, final Time time, final String clientId) {
