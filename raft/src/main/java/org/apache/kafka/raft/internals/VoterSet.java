@@ -109,15 +109,19 @@ public final class VoterSet {
     public boolean isVoter(ReplicaKey nodeKey) {
         VoterNode node = voters.get(nodeKey.id());
         if (node != null) {
-            if (node.voterKey().directoryId().isPresent()) {
-                return node.voterKey().directoryId().equals(nodeKey.directoryId());
-            } else {
-                // configured voter set doesn't include a directory id so it is a voter as long as the node id
-                // matches
-                return true;
-            }
+            return isVoter(nodeKey, node);
         } else {
             return false;
+        }
+    }
+
+    private boolean isVoter(ReplicaKey nodeKey, VoterNode node) {
+        if (node.voterKey().directoryId().isPresent()) {
+            return node.voterKey().directoryId().equals(nodeKey.directoryId());
+        } else {
+            // configured voter set doesn't include a directory id so it is a voter as long as the node id
+            // matches
+            return true;
         }
     }
 
