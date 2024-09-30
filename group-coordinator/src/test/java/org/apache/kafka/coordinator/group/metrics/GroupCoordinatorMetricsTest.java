@@ -154,7 +154,7 @@ public class GroupCoordinatorMetricsTest {
             9
         );
 
-        snapshotRegistry0.getOrCreateSnapshot(1000);
+        idempotentCreateSnapshot(snapshotRegistry0);
         snapshotRegistry1.getOrCreateSnapshot(1500);
         shard0.commitUpTo(1000);
         shard1.commitUpTo(1500);
@@ -169,6 +169,10 @@ public class GroupCoordinatorMetricsTest {
             7
         );
         assertGaugeValue(registry, metricName("GroupMetadataManager", "NumOffsets"), 7);
+    }
+
+    private void idempotentCreateSnapshot(SnapshotRegistry snapshotRegistry0) {
+        snapshotRegistry0.getOrCreateSnapshot(1000);
     }
 
     @Test
