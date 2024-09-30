@@ -2163,7 +2163,7 @@ final public class KafkaRaftClient<T> implements RaftClient<T> {
             // If the current leader is backing off due to some failure or if the
             // request has timed out, then we attempt to send the Fetch to another
             // voter in order to discover if there has been a leader change.
-            ConnectionState connection = requestManager.getOrCreate(state.leaderId());
+            ConnectionState connection = hasAnyInflightRequest(state);
             if (connection.hasRequestTimedOut(currentTimeMs)) {
                 backoffMs = maybeSendAnyVoterFetch(currentTimeMs);
                 connection.reset();
@@ -2175,6 +2175,11 @@ final public class KafkaRaftClient<T> implements RaftClient<T> {
 
             return Math.min(backoffMs, state.remainingFetchTimeMs(currentTimeMs));
         }
+    }
+
+    private ConnectionState hasAnyInflightRequest(FollowerState state) {
+        ConnectionState connection = requestManager.getOrCreate(state.leaderId());
+        return connection;
     }
 
     private long maybeSendFetchOrFetchSnapshot(FollowerState state, long currentTimeMs) {
