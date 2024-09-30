@@ -61,7 +61,7 @@ public class GroupCoordinatorMetricsShardTest {
         shard.incrementNumConsumerGroups(ConsumerGroup.ConsumerGroupState.STABLE);
         shard.incrementNumConsumerGroups(ConsumerGroup.ConsumerGroupState.DEAD);
 
-        snapshotRegistry.getOrCreateSnapshot(1000);
+        idempotentCreateSnapshot(snapshotRegistry);
         // The value should not be updated until the offset has been committed.
         assertEquals(0, shard.numOffsets());
         assertEquals(0, shard.numConsumerGroups());
@@ -184,7 +184,7 @@ public class GroupCoordinatorMetricsShardTest {
 
         IntStream.range(0, 4).forEach(__ -> shard.incrementNumConsumerGroups(ConsumerGroup.ConsumerGroupState.EMPTY));
 
-        snapshotRegistry.getOrCreateSnapshot(1000);
+        idempotentCreateSnapshot(snapshotRegistry);
         shard.commitUpTo(1000);
         assertEquals(4, shard.numConsumerGroups());
         assertEquals(4, shard.numConsumerGroups(ConsumerGroup.ConsumerGroupState.EMPTY));
@@ -238,5 +238,9 @@ public class GroupCoordinatorMetricsShardTest {
             Collections.singletonMap("state", ConsumerGroup.ConsumerGroupState.STABLE.toString())), 2);
         assertGaugeValue(metrics, metrics.metricName("consumer-group-count", "group-coordinator-metrics",
             Collections.singletonMap("state", ConsumerGroup.ConsumerGroupState.DEAD.toString())), 0);
+    }
+
+    private void idempotentCreateSnapshot(SnapshotRegistry snapshotRegistry) {
+        snapshotRegistry.getOrCreateSnapshot(1000);
     }
 }
