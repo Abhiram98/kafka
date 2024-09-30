@@ -60,7 +60,7 @@ class VotedStateTest {
         ReplicaKey votedKey  = ReplicaKey.of(votedId, ReplicaKey.NO_DIRECTORY_ID);
 
         assertEquals(epoch, state.epoch());
-        assertEquals(votedKey, state.votedKey());
+        votedKey(state, votedKey);
         assertEquals(
             ElectionState.withVotedCandidate(epoch, votedKey, Collections.emptySet()),
             state.election()
@@ -75,6 +75,10 @@ class VotedStateTest {
         time.sleep(5000);
         assertEquals(0, state.remainingElectionTimeMs(time.milliseconds()));
         assertTrue(state.hasElectionTimeoutExpired(time.milliseconds()));
+    }
+
+    private void votedKey(VotedState state, ReplicaKey votedKey) {
+        assertEquals(votedKey, state.votedKey());
     }
 
     @ParameterizedTest
