@@ -100,7 +100,7 @@ public class FeatureControlManagerTest {
             setSnapshotRegistry(snapshotRegistry).
             setMetadataVersion(MetadataVersion.IBP_3_3_IV0).
             build();
-        snapshotRegistry.getOrCreateSnapshot(-1);
+        idempotentCreateSnapshot(snapshotRegistry);
         assertEquals(new FinalizedControllerFeatures(Collections.singletonMap("metadata.version", (short) 4), -1),
             manager.finalizedFeatures(-1));
         assertEquals(ControllerResult.atomicOf(emptyList(), Collections.
@@ -124,6 +124,10 @@ public class FeatureControlManagerTest {
         assertEquals(expectedMessages, result.records());
     }
 
+    private void idempotentCreateSnapshot(SnapshotRegistry snapshotRegistry) {
+        snapshotRegistry.getOrCreateSnapshot(-1);
+    }
+
     @Test
     public void testReplay() {
         LogContext logContext = new LogContext();
@@ -131,7 +135,7 @@ public class FeatureControlManagerTest {
         FeatureLevelRecord record = new FeatureLevelRecord().
             setName("foo").setFeatureLevel((short) 2);
 
-        snapshotRegistry.getOrCreateSnapshot(-1);
+        idempotentCreateSnapshot(snapshotRegistry);
         FeatureControlManager manager = new FeatureControlManager.Builder().
                 setLogContext(logContext).
                 setQuorumFeatures(features("foo", 1, 2)).
