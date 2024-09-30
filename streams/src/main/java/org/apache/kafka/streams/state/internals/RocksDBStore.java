@@ -646,10 +646,14 @@ public class RocksDBStore implements KeyValueStore<Bytes, byte[]>, BatchWritingS
             return;
         }
         try {
-            dbAccessor.flush();
+            flush1();
         } catch (final RocksDBException e) {
             throw new ProcessorStateException("Error while executing flush from store " + name, e);
         }
+    }
+
+    private void flush1() throws RocksDBException {
+        dbAccessor.flush();
     }
 
     @Override
