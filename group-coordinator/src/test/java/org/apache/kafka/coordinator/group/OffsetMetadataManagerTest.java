@@ -2346,6 +2346,25 @@ public class OffsetMetadataManagerTest {
     @EnumSource(Group.GroupType.class)
     public void testDeleteGroupAllOffsets(Group.GroupType groupType) {
         OffsetMetadataManagerTestContext context = new OffsetMetadataManagerTestContext.Builder().build();
+        getOrMaybeCreateGroup(groupType, context);
+        context.commitOffset("foo", "bar-0", 0, 100L, 0);
+        context.commitOffset("foo", "bar-0", 1, 100L, 0);
+        context.commitOffset("foo", "bar-1", 0, 100L, 0);
+
+        List<Record> expectedRecords = Arrays.asList(
+            RecordHelpers.newOffsetCommitTombstoneRecord("foo", "bar-1", 0),
+            RecordHelpers.newOffsetCommitTombstoneRecord("foo", "bar-0", 0),
+            RecordHelpers.newOffsetCommitTombstoneRecord("foo", "bar-0", 1)
+        );
+
+        List<Record> records = new ArrayList<>();
+        int numDeleteOffsets = context.deleteAllOffsets("foo", records);
+
+        assertEquals(expectedRecords, records);
+        assertEquals(3, numDeleteOffsets);
+    }
+
+    private void getOrMaybeCreateGroup(Group.GroupType groupType, OffsetMetadataManagerTestContext context) {
         switch (groupType) {
             case CLASSIC:
                 context.groupMetadataManager.getOrMaybeCreateClassicGroup(
@@ -2362,21 +2381,6 @@ public class OffsetMetadataManagerTest {
             default:
                 throw new IllegalArgumentException("Invalid group type: " + groupType);
         }
-        context.commitOffset("foo", "bar-0", 0, 100L, 0);
-        context.commitOffset("foo", "bar-0", 1, 100L, 0);
-        context.commitOffset("foo", "bar-1", 0, 100L, 0);
-
-        List<Record> expectedRecords = Arrays.asList(
-            RecordHelpers.newOffsetCommitTombstoneRecord("foo", "bar-1", 0),
-            RecordHelpers.newOffsetCommitTombstoneRecord("foo", "bar-0", 0),
-            RecordHelpers.newOffsetCommitTombstoneRecord("foo", "bar-0", 1)
-        );
-
-        List<Record> records = new ArrayList<>();
-        int numDeleteOffsets = context.deleteAllOffsets("foo", records);
-
-        assertEquals(expectedRecords, records);
-        assertEquals(3, numDeleteOffsets);
     }
 
     @Test
