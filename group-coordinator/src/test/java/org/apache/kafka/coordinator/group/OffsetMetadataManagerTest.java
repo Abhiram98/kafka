@@ -481,7 +481,7 @@ public class OffsetMetadataManagerTest {
             long producerId,
             CoordinatorRecord record
         ) {
-            snapshotRegistry.getOrCreateSnapshot(lastWrittenOffset);
+            idempotentCreateSnapshot();
 
             ApiMessageAndVersion key = record.key();
             ApiMessageAndVersion value = record.value();
@@ -512,9 +512,13 @@ public class OffsetMetadataManagerTest {
             long producerId,
             TransactionResult result
         ) {
-            snapshotRegistry.getOrCreateSnapshot(lastWrittenOffset);
+            idempotentCreateSnapshot();
             offsetMetadataManager.replayEndTransactionMarker(producerId, result);
             lastWrittenOffset++;
+        }
+
+        private void idempotentCreateSnapshot() {
+            snapshotRegistry.getOrCreateSnapshot(lastWrittenOffset);
         }
 
         public void testOffsetDeleteWith(
