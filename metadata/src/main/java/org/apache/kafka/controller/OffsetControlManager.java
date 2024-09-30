@@ -249,7 +249,7 @@ class OffsetControlManager {
         // Before switching to active, create an in-memory snapshot at the last committed
         // offset. This is required because the active controller assumes that there is always
         // an in-memory snapshot at the last committed offset.
-        snapshotRegistry.getOrCreateSnapshot(lastStableOffset);
+        idempotentCreateSnapshot(lastStableOffset);
         this.nextWriteOffset = newNextWriteOffset;
         metrics.setActive(true);
     }
@@ -298,7 +298,7 @@ class OffsetControlManager {
     void handleScheduleAtomicAppend(long endOffset) {
         this.nextWriteOffset = endOffset + 1;
 
-        snapshotRegistry.getOrCreateSnapshot(endOffset);
+        idempotentCreateSnapshot(endOffset);
 
         metrics.setLastAppliedRecordOffset(endOffset);
 
@@ -307,6 +307,10 @@ class OffsetControlManager {
         // the records were given to the KRAft client for appending and the default append linger
         // for KRaft is 25ms.
         metrics.setLastAppliedRecordTimestamp(time.milliseconds());
+    }
+
+    private void idempotentCreateSnapshot(long endOffset) {
+        snapshotRegistry.getOrCreateSnapshot(endOffset);
     }
 
     /**
@@ -323,7 +327,7 @@ class OffsetControlManager {
             lastStableOffset = newLastStableOffset;
             snapshotRegistry.deleteSnapshotsUpTo(lastStableOffset);
             if (!active()) {
-                snapshotRegistry.getOrCreateSnapshot(lastStableOffset);
+                idempotentCreateSnapshot(lastStableOffset);
             }
         }
     }
@@ -383,7 +387,7 @@ class OffsetControlManager {
             throw new RuntimeException("Can't replay a BeginTransactionRecord at " + offset +
                 " because the transaction at " + transactionStartOffset + " was never closed.");
         }
-        snapshotRegistry.getOrCreateSnapshot(offset - 1);
+        idempotentCreateSnapshot(offset - 1);
         transactionStartOffset = offset;
         log.info("Replayed {} at offset {}.", message, offset);
     }
