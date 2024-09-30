@@ -746,7 +746,7 @@ public class SubscriptionState {
     }
 
     public synchronized Set<TopicPartition> initializingPartitions() {
-        return collectPartitions(state -> state.fetchState.equals(FetchStates.INITIALIZING) && !state.pendingOnAssignedCallback);
+        return collectPartitions(state -> shouldInitialize(state) && !state.pendingOnAssignedCallback);
     }
 
     private Set<TopicPartition> collectPartitions(Predicate<TopicPartitionState> filter) {
@@ -763,7 +763,7 @@ public class SubscriptionState {
     public synchronized void resetInitializingPositions() {
         final Set<TopicPartition> partitionsWithNoOffsets = new HashSet<>();
         assignment.forEach((tp, partitionState) -> {
-            if (partitionState.fetchState.equals(FetchStates.INITIALIZING)) {
+            if (shouldInitialize(partitionState)) {
                 if (defaultResetStrategy == OffsetResetStrategy.NONE)
                     partitionsWithNoOffsets.add(tp);
                 else
@@ -773,6 +773,10 @@ public class SubscriptionState {
 
         if (!partitionsWithNoOffsets.isEmpty())
             throw new NoOffsetForPartitionException(partitionsWithNoOffsets);
+    }
+
+    private boolean shouldInitialize(TopicPartitionState partitionState) {
+        return partitionState.fetchState.equals(FetchStates.INITIALIZING);
     }
 
     public synchronized Set<TopicPartition> partitionsNeedingReset(long nowMs) {
