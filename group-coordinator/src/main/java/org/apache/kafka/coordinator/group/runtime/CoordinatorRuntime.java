@@ -781,104 +781,108 @@ public class CoordinatorRuntime<S extends CoordinatorShard<U>, U> implements Aut
                     // Execute the operation.
                     result = op.generateRecordsAndResult(context.coordinator.coordinator());
 
-                    if (result.records().isEmpty()) {
-                        // If the records are empty, it was a read operation after all. In this case,
-                        // the response can be returned directly iff there are no pending write operations;
-                        // otherwise, the read needs to wait on the last write operation to be completed.
-                        OptionalLong pendingOffset = context.deferredEventQueue.highestPendingOffset();
-                        if (pendingOffset.isPresent()) {
-                            context.deferredEventQueue.add(pendingOffset.getAsLong(), this);
-                        } else {
-                            complete(null);
-                        }
-                    } else {
-                        // If the records are not empty, first, they are applied to the state machine,
-                        // second, then are written to the partition/log, and finally, the response
-                        // is put into the deferred event queue.
-                        long prevLastWrittenOffset = context.coordinator.lastWrittenOffset();
-                        LogConfig logConfig = partitionWriter.config(tp);
-                        byte magic = logConfig.recordVersion().value;
-                        int maxBatchSize = logConfig.maxMessageSize();
-                        long currentTimeMs = time.milliseconds();
-                        ByteBuffer buffer = context.bufferSupplier.get(Math.min(MIN_BUFFER_SIZE, maxBatchSize));
-
-                        try {
-                            MemoryRecordsBuilder builder = new MemoryRecordsBuilder(
-                                buffer,
-                                magic,
-                                compression,
-                                TimestampType.CREATE_TIME,
-                                0L,
-                                currentTimeMs,
-                                producerId,
-                                producerEpoch,
-                                0,
-                                producerId != RecordBatch.NO_PRODUCER_ID,
-                                false,
-                                RecordBatch.NO_PARTITION_LEADER_EPOCH,
-                                maxBatchSize
-                            );
-
-                            // Apply the records to the state machine and add them to the batch.
-                            for (int i = 0; i < result.records().size(); i++) {
-                                U record = result.records().get(i);
-
-                                if (result.replayRecords()) {
-                                    // We compute the offset of the record based on the last written offset. The
-                                    // coordinator is the single writer to the underlying partition so we can
-                                    // deduce it like this.
-                                    context.coordinator.replay(
-                                        prevLastWrittenOffset + i,
-                                        producerId,
-                                        producerEpoch,
-                                        record
-                                    );
-                                }
-
-                                byte[] keyBytes = serializer.serializeKey(record);
-                                byte[] valBytes = serializer.serializeValue(record);
-
-                                if (builder.hasRoomFor(currentTimeMs, keyBytes, valBytes, EMPTY_HEADERS)) {
-                                    builder.append(
-                                        currentTimeMs,
-                                        keyBytes,
-                                        valBytes,
-                                        EMPTY_HEADERS
-                                    );
-                                } else {
-                                    throw new RecordTooLargeException("Message batch size is " + builder.estimatedSizeInBytes() +
-                                        " bytes in append to partition " + tp + " which exceeds the maximum " +
-                                        "configured size of " + maxBatchSize + ".");
-                                }
-                            }
-
-                            // Write the records to the log and update the last written
-                            // offset.
-                            long offset = partitionWriter.append(
-                                tp,
-                                verificationGuard,
-                                builder.build()
-                            );
-                            context.coordinator.updateLastWrittenOffset(offset);
-
-                            // Add the response to the deferred queue.
-                            if (!future.isDone()) {
-                                context.deferredEventQueue.add(offset, this);
-                                operationTimeout = new OperationTimeout(tp, this, writeTimeout.toMillis());
-                                timer.add(operationTimeout);
-                            } else {
-                                complete(null);
-                            }
-                        } catch (Throwable t) {
-                            context.coordinator.revertLastWrittenOffset(prevLastWrittenOffset);
-                            complete(t);
-                        } finally {
-                            context.bufferSupplier.release(buffer);
-                        }
-                    }
+                    append(context);
                 });
             } catch (Throwable t) {
                 complete(t);
+            }
+        }
+
+        private void append(CoordinatorContext context) {
+            if (result.records().isEmpty()) {
+                // If the records are empty, it was a read operation after all. In this case,
+                // the response can be returned directly iff there are no pending write operations;
+                // otherwise, the read needs to wait on the last write operation to be completed.
+                OptionalLong pendingOffset = context.deferredEventQueue.highestPendingOffset();
+                if (pendingOffset.isPresent()) {
+                    context.deferredEventQueue.add(pendingOffset.getAsLong(), this);
+                } else {
+                    complete(null);
+                }
+            } else {
+                // If the records are not empty, first, they are applied to the state machine,
+                // second, then are written to the partition/log, and finally, the response
+                // is put into the deferred event queue.
+                long prevLastWrittenOffset = context.coordinator.lastWrittenOffset();
+                LogConfig logConfig = partitionWriter.config(tp);
+                byte magic = logConfig.recordVersion().value;
+                int maxBatchSize = logConfig.maxMessageSize();
+                long currentTimeMs = time.milliseconds();
+                ByteBuffer buffer = context.bufferSupplier.get(Math.min(MIN_BUFFER_SIZE, maxBatchSize));
+
+                try {
+                    MemoryRecordsBuilder builder = new MemoryRecordsBuilder(
+                        buffer,
+                        magic,
+                        compression,
+                        TimestampType.CREATE_TIME,
+                        0L,
+                        currentTimeMs,
+                        producerId,
+                        producerEpoch,
+                        0,
+                        producerId != RecordBatch.NO_PRODUCER_ID,
+                        false,
+                        RecordBatch.NO_PARTITION_LEADER_EPOCH,
+                        maxBatchSize
+                    );
+
+                    // Apply the records to the state machine and add them to the batch.
+                    for (int i = 0; i < result.records().size(); i++) {
+                        U record = result.records().get(i);
+
+                        if (result.replayRecords()) {
+                            // We compute the offset of the record based on the last written offset. The
+                            // coordinator is the single writer to the underlying partition so we can
+                            // deduce it like this.
+                            context.coordinator.replay(
+                                prevLastWrittenOffset + i,
+                                producerId,
+                                producerEpoch,
+                                record
+                            );
+                        }
+
+                        byte[] keyBytes = serializer.serializeKey(record);
+                        byte[] valBytes = serializer.serializeValue(record);
+
+                        if (builder.hasRoomFor(currentTimeMs, keyBytes, valBytes, EMPTY_HEADERS)) {
+                            builder.append(
+                                currentTimeMs,
+                                keyBytes,
+                                valBytes,
+                                EMPTY_HEADERS
+                            );
+                        } else {
+                            throw new RecordTooLargeException("Message batch size is " + builder.estimatedSizeInBytes() +
+                                " bytes in append to partition " + tp + " which exceeds the maximum " +
+                                "configured size of " + maxBatchSize + ".");
+                        }
+                    }
+
+                    // Write the records to the log and update the last written
+                    // offset.
+                    long offset = partitionWriter.append(
+                        tp,
+                        verificationGuard,
+                        builder.build()
+                    );
+                    context.coordinator.updateLastWrittenOffset(offset);
+
+                    // Add the response to the deferred queue.
+                    if (!future.isDone()) {
+                        context.deferredEventQueue.add(offset, this);
+                        operationTimeout = new OperationTimeout(tp, this, writeTimeout.toMillis());
+                        timer.add(operationTimeout);
+                    } else {
+                        complete(null);
+                    }
+                } catch (Throwable t) {
+                    context.coordinator.revertLastWrittenOffset(prevLastWrittenOffset);
+                    complete(t);
+                } finally {
+                    context.bufferSupplier.release(buffer);
+                }
             }
         }
 
