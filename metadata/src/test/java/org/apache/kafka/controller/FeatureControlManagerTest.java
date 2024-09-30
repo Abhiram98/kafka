@@ -100,7 +100,7 @@ public class FeatureControlManagerTest {
             setSnapshotRegistry(snapshotRegistry).
             setMetadataVersion(MetadataVersion.IBP_3_3_IV0).
             build();
-        snapshotRegistry.getOrCreateSnapshot(-1);
+        idempotentCreateSnapshot(snapshotRegistry);
         assertEquals(new FinalizedControllerFeatures(Collections.singletonMap("metadata.version", (short) 4), -1),
             manager.finalizedFeatures(-1));
         assertEquals(ControllerResult.atomicOf(emptyList(), Collections.
@@ -131,7 +131,7 @@ public class FeatureControlManagerTest {
         FeatureLevelRecord record = new FeatureLevelRecord().
             setName("foo").setFeatureLevel((short) 2);
 
-        snapshotRegistry.getOrCreateSnapshot(-1);
+        idempotentCreateSnapshot(snapshotRegistry);
         FeatureControlManager manager = new FeatureControlManager.Builder().
                 setLogContext(logContext).
                 setQuorumFeatures(features("foo", 1, 2)).
@@ -142,6 +142,10 @@ public class FeatureControlManagerTest {
         snapshotRegistry.getOrCreateSnapshot(123);
         assertEquals(new FinalizedControllerFeatures(versionMap("metadata.version", 4, "foo", 2), 123),
             manager.finalizedFeatures(123));
+    }
+
+    private void idempotentCreateSnapshot(SnapshotRegistry snapshotRegistry) {
+        snapshotRegistry.getOrCreateSnapshot(-1);
     }
 
     static ClusterFeatureSupportDescriber createFakeClusterFeatureSupportDescriber(
