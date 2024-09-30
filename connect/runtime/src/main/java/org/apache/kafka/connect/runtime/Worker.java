@@ -389,7 +389,7 @@ public class Worker {
             if (workerConnector == null)
                 throw new ConnectException("Connector " + connName + " not found in this worker.");
 
-            int maxTasks = connConfig.getInt(ConnectorConfig.TASKS_MAX_CONFIG);
+            int maxTasks = tasksMax(connConfig);
             Map<String, String> connOriginals = connConfig.originalsStrings();
 
             Connector connector = workerConnector.connector();
@@ -411,6 +411,11 @@ public class Worker {
         }
 
         return result;
+    }
+
+    private int tasksMax(ConnectorConfig connConfig) {
+        int maxTasks = connConfig.getInt(ConnectorConfig.TASKS_MAX_CONFIG);
+        return maxTasks;
     }
 
     /**
