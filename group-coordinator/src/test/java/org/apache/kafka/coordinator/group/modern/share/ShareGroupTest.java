@@ -678,7 +678,7 @@ public class ShareGroupTest {
     public void testAsListedGroup() {
         SnapshotRegistry snapshotRegistry = new SnapshotRegistry(new LogContext());
         ShareGroup shareGroup = new ShareGroup(snapshotRegistry, "group-foo");
-        snapshotRegistry.getOrCreateSnapshot(0);
+        idempotentCreateSnapshot(snapshotRegistry);
         assertEquals(ShareGroupState.EMPTY, shareGroup.state(0));
         assertEquals("Empty", shareGroup.stateAsString(0));
         shareGroup.updateMember(new ShareGroupMember.Builder("member1")
@@ -786,7 +786,7 @@ public class ShareGroupTest {
     public void testAsDescribedGroup() {
         SnapshotRegistry snapshotRegistry = new SnapshotRegistry(new LogContext());
         ShareGroup shareGroup = new ShareGroup(snapshotRegistry, "group-id-1");
-        snapshotRegistry.getOrCreateSnapshot(0);
+        idempotentCreateSnapshot(snapshotRegistry);
         assertEquals(ShareGroupState.EMPTY.toString(), shareGroup.stateAsString(0));
 
         shareGroup.updateMember(new ShareGroupMember.Builder("member1")
@@ -818,7 +818,7 @@ public class ShareGroupTest {
     public void testIsInStatesCaseInsensitive() {
         SnapshotRegistry snapshotRegistry = new SnapshotRegistry(new LogContext());
         ShareGroup shareGroup = new ShareGroup(snapshotRegistry, "group-foo");
-        snapshotRegistry.getOrCreateSnapshot(0);
+        idempotentCreateSnapshot(snapshotRegistry);
         assertTrue(shareGroup.isInStates(Collections.singleton("empty"), 0));
         assertFalse(shareGroup.isInStates(Collections.singleton("Empty"), 0));
 
@@ -829,6 +829,10 @@ public class ShareGroupTest {
         assertTrue(shareGroup.isInStates(Collections.singleton("empty"), 0));
         assertTrue(shareGroup.isInStates(Collections.singleton("stable"), 1));
         assertFalse(shareGroup.isInStates(Collections.singleton("empty"), 1));
+    }
+
+    private void idempotentCreateSnapshot(SnapshotRegistry snapshotRegistry) {
+        snapshotRegistry.getOrCreateSnapshot(0);
     }
 
     private ShareGroup createShareGroup(String groupId) {
