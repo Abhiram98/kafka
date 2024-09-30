@@ -249,9 +249,13 @@ class OffsetControlManager {
         // Before switching to active, create an in-memory snapshot at the last committed
         // offset. This is required because the active controller assumes that there is always
         // an in-memory snapshot at the last committed offset.
-        snapshotRegistry.getOrCreateSnapshot(lastStableOffset);
+        idempotentCreateSnapshot();
         this.nextWriteOffset = newNextWriteOffset;
         metrics.setActive(true);
+    }
+
+    private void idempotentCreateSnapshot() {
+        snapshotRegistry.getOrCreateSnapshot(lastStableOffset);
     }
 
     /**
@@ -323,7 +327,7 @@ class OffsetControlManager {
             lastStableOffset = newLastStableOffset;
             snapshotRegistry.deleteSnapshotsUpTo(lastStableOffset);
             if (!active()) {
-                snapshotRegistry.getOrCreateSnapshot(lastStableOffset);
+                idempotentCreateSnapshot();
             }
         }
     }
