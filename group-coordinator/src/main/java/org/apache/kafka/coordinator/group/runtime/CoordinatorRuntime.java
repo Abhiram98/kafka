@@ -1144,41 +1144,45 @@ public class CoordinatorRuntime<S extends CoordinatorShard<U>, U> implements Aut
                 withActiveContextOrThrow(tp, context -> {
                     long prevLastWrittenOffset = context.coordinator.lastWrittenOffset();
 
-                    try {
-                        context.coordinator.replayEndTransactionMarker(
-                            producerId,
-                            producerEpoch,
-                            result
-                        );
-
-                        long offset = partitionWriter.append(
-                            tp,
-                            VerificationGuard.SENTINEL,
-                            MemoryRecords.withEndTransactionMarker(
-                                time.milliseconds(),
-                                producerId,
-                                producerEpoch,
-                                new EndTransactionMarker(
-                                    result == TransactionResult.COMMIT ? ControlRecordType.COMMIT : ControlRecordType.ABORT,
-                                    coordinatorEpoch
-                                )
-                            )
-                        );
-                        context.coordinator.updateLastWrittenOffset(offset);
-
-                        if (!future.isDone()) {
-                            context.deferredEventQueue.add(offset, this);
-                            operationTimeout = new OperationTimeout(tp, this, writeTimeout.toMillis());
-                            timer.add(operationTimeout);
-                        } else {
-                            complete(null);
-                        }
-                    } catch (Throwable t) {
-                        context.coordinator.revertLastWrittenOffset(prevLastWrittenOffset);
-                        complete(t);
-                    }
+                    completeTransaction(context, prevLastWrittenOffset);
                 });
             } catch (Throwable t) {
+                complete(t);
+            }
+        }
+
+        private void completeTransaction(CoordinatorContext context, long prevLastWrittenOffset) {
+            try {
+                context.coordinator.replayEndTransactionMarker(
+                    producerId,
+                    producerEpoch,
+                    result
+                );
+
+                long offset = partitionWriter.append(
+                    tp,
+                    VerificationGuard.SENTINEL,
+                    MemoryRecords.withEndTransactionMarker(
+                        time.milliseconds(),
+                        producerId,
+                        producerEpoch,
+                        new EndTransactionMarker(
+                            result == TransactionResult.COMMIT ? ControlRecordType.COMMIT : ControlRecordType.ABORT,
+                            coordinatorEpoch
+                        )
+                    )
+                );
+                context.coordinator.updateLastWrittenOffset(offset);
+
+                if (!future.isDone()) {
+                    context.deferredEventQueue.add(offset, this);
+                    operationTimeout = new OperationTimeout(tp, this, writeTimeout.toMillis());
+                    timer.add(operationTimeout);
+                } else {
+                    complete(null);
+                }
+            } catch (Throwable t) {
+                context.coordinator.revertLastWrittenOffset(prevLastWrittenOffset);
                 complete(t);
             }
         }
