@@ -1156,7 +1156,7 @@ public final class RaftClientTestContext {
     public void advanceLocalLeaderHighWatermarkToLogEndOffset() throws InterruptedException {
         assertEquals(localId, currentLeader());
         long localLogEndOffset = log.endOffset().offset;
-        Set<Integer> followers = voters.stream().filter(voter -> voter != localId.getAsInt()).collect(Collectors.toSet());
+        Set<Integer> followers = voterKeys();
 
         // Send a request from every follower
         for (int follower : followers) {
@@ -1168,6 +1168,11 @@ public final class RaftClientTestContext {
         }
 
         pollUntil(() -> OptionalLong.of(localLogEndOffset).equals(client.highWatermark()));
+    }
+
+    private Set<Integer> voterKeys() {
+        Set<Integer> followers = voters.stream().filter(voter -> voter != localId.getAsInt()).collect(Collectors.toSet());
+        return followers;
     }
 
     static class MockListener implements RaftClient.Listener<String> {
