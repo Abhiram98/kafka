@@ -268,6 +268,10 @@ public class GlobalStreamThread extends Thread {
                 stateMaintainer.update(record);
             }
             final long now = time.milliseconds();
+            maybeCheckpoint(now);
+        }
+
+        private void maybeCheckpoint(long now) {
             if (now - flushInterval >= lastFlush) {
                 stateMaintainer.flushState();
                 lastFlush = now;
