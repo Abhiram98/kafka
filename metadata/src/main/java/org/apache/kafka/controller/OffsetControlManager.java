@@ -383,9 +383,13 @@ class OffsetControlManager {
             throw new RuntimeException("Can't replay a BeginTransactionRecord at " + offset +
                 " because the transaction at " + transactionStartOffset + " was never closed.");
         }
-        snapshotRegistry.getOrCreateSnapshot(offset - 1);
+        idempotentCreateSnapshot(offset);
         transactionStartOffset = offset;
         log.info("Replayed {} at offset {}.", message, offset);
+    }
+
+    private void idempotentCreateSnapshot(long offset) {
+        snapshotRegistry.getOrCreateSnapshot(offset - 1);
     }
 
     public void replay(EndTransactionRecord message, long offset) {
