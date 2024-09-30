@@ -362,7 +362,7 @@ class OffsetControlManager {
                     "current snapshot.");
         }
         log.info("Successfully loaded snapshot {}.", currentSnapshotName);
-        this.snapshotRegistry.getOrCreateSnapshot(currentSnapshotId.offset());
+        idempotentCreateSnapshot();
         this.lastCommittedOffset = currentSnapshotId.offset();
         this.lastCommittedEpoch = currentSnapshotId.epoch();
         this.lastStableOffset = currentSnapshotId.offset();
@@ -373,6 +373,10 @@ class OffsetControlManager {
         metrics.setLastAppliedRecordTimestamp(timestamp);
         this.currentSnapshotId = null;
         this.currentSnapshotName = null;
+    }
+
+    private void idempotentCreateSnapshot() {
+        this.snapshotRegistry.getOrCreateSnapshot(currentSnapshotId.offset());
     }
 
     public void replay(BeginTransactionRecord message, long offset) {
