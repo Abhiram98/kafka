@@ -1703,6 +1703,10 @@ final public class KafkaRaftClient<T> implements RaftClient<T> {
         }
 
         ConnectionState connection = requestManager.getOrCreate(response.sourceId());
+        onResponseResult(response, currentTimeMs, handledSuccessfully, connection);
+    }
+
+    private void onResponseResult(RaftResponse.Inbound response, long currentTimeMs, boolean handledSuccessfully, ConnectionState connection) {
         if (handledSuccessfully) {
             connection.onResponseReceived(response.correlationId);
         } else {
