@@ -1512,7 +1512,11 @@ public class GroupMetadataManagerTestContext {
         }
 
         lastWrittenOffset++;
-        snapshotRegistry.getOrCreateSnapshot(lastWrittenOffset);
+        idempotentCreateSnapshot(lastWrittenOffset);
+    }
+
+    private void idempotentCreateSnapshot(long epoch) {
+        snapshotRegistry.getOrCreateSnapshot(epoch);
     }
 
     void onUnloaded() {
