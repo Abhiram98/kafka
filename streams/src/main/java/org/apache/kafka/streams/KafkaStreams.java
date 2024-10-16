@@ -276,6 +276,8 @@ public class KafkaStreams implements AutoCloseable {
         }
     }
 
+
+
     private final Object stateLock = new Object();
     protected volatile State state = State.CREATED;
 
@@ -387,6 +389,10 @@ public class KafkaStreams implements AutoCloseable {
                 throw new IllegalStateException("KafkaStreams is not running. State is " + state + ".");
             }
         }
+    }
+
+    public Map<Long, StreamThread.State> getThreadState() {
+        return threadState;
     }
 
     /**
@@ -1092,7 +1098,7 @@ public class KafkaStreams implements AutoCloseable {
     }
 
     private void registerStreamThread(StreamThread streamThread) {
-        threadState.put(streamThread.getId(), streamThread.state());
+        getThreadState().put(streamThread.getId(), streamThread.state());
     }
 
     static Metrics getMetrics(final StreamsConfig config, final Time time, final String clientId) {
