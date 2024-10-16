@@ -631,9 +631,11 @@ class WorkerSinkTask extends WorkerTask {
     }
 
     private void maybeThrowAsyncError() {
-        if (retryWithToleranceOperator.failed() && !retryWithToleranceOperator.withinToleranceLimits()) {
+        RetryWithToleranceOperator retryWithToleranceOperator = getRetryWithToleranceOperator();
+        if (workerErrantRecordReporter.getTaskPutException().get()!=null
+                && retryWithToleranceOperator.failed() && !retryWithToleranceOperator.withinToleranceLimits()) {
             throw new ConnectException("Tolerance exceeded in error handler",
-                retryWithToleranceOperator.error());
+                workerErrantRecordReporter.getTaskPutException().get());
         }
     }
 

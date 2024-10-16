@@ -43,6 +43,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class WorkerErrantRecordReporter implements ErrantRecordReporter {
@@ -53,6 +54,12 @@ public class WorkerErrantRecordReporter implements ErrantRecordReporter {
     private final Converter keyConverter;
     private final Converter valueConverter;
     private final HeaderConverter headerConverter;
+
+    public AtomicReference<Throwable> getTaskPutException() {
+        return taskPutException;
+    }
+
+    private final AtomicReference<Throwable> taskPutException;
 
     // Visible for testing
     protected final ConcurrentMap<TopicPartition, List<Future<Void>>> futures;
@@ -68,6 +75,7 @@ public class WorkerErrantRecordReporter implements ErrantRecordReporter {
         this.valueConverter = valueConverter;
         this.headerConverter = headerConverter;
         this.futures = new ConcurrentHashMap<>();
+        this.taskPutException = new AtomicReference<>();
     }
 
     @Override

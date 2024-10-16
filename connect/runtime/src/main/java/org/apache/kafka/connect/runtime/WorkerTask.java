@@ -69,6 +69,10 @@ abstract class WorkerTask implements Runnable {
 
     protected final RetryWithToleranceOperator retryWithToleranceOperator;
 
+    public RetryWithToleranceOperator getRetryWithToleranceOperator() {
+        return retryWithToleranceOperator;
+    }
+
     public WorkerTask(ConnectorTaskId id,
                       TaskStatus.Listener statusListener,
                       TargetState initialState,
