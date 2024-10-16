@@ -776,7 +776,7 @@ public class SubscriptionState {
     }
 
     private boolean shouldInitialize(TopicPartitionState partitionState) {
-        return partitionState.fetchState.equals(FetchStates.INITIALIZING);
+        return partitionState.fetchState.equals(FetchStates.INITIALIZING) && !partitionState.pendingOnAssignedCallback;
     }
 
     public synchronized Set<TopicPartition> partitionsNeedingReset(long nowMs) {
