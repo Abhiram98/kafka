@@ -57,6 +57,7 @@ import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.raft.internals.BatchBuilder;
 import org.apache.kafka.raft.internals.ReplicaKey;
 import org.apache.kafka.raft.internals.StringSerde;
+import org.apache.kafka.raft.internals.VoterSet;
 import org.apache.kafka.server.common.serialization.RecordSerde;
 import org.apache.kafka.snapshot.RawSnapshotWriter;
 import org.apache.kafka.snapshot.SnapshotReader;
@@ -116,6 +117,7 @@ public final class RaftClientTestContext {
     final MockTime time;
     final MockListener listener;
     final Set<Integer> voters;
+    final VoterSet voterSet;
     final Set<Integer> bootstrapIds;
 
     private final List<RaftResponse.Outbound> sentResponses = new ArrayList<>();
@@ -307,7 +309,7 @@ public final class RaftClientTestContext {
                     .boxed()
                     .collect(Collectors.toSet()),
                 metrics,
-                listener
+                listener,
             );
 
             context.electionTimeoutMs = electionTimeoutMs;
@@ -319,18 +321,19 @@ public final class RaftClientTestContext {
     }
 
     private RaftClientTestContext(
-        Uuid clusterId,
-        OptionalInt localId,
-        KafkaRaftClient<String> client,
-        MockLog log,
-        MockNetworkChannel channel,
-        MockMessageQueue messageQueue,
-        MockTime time,
-        QuorumStateStore quorumStateStore,
-        Set<Integer> voters,
-        Set<Integer> bootstrapIds,
-        Metrics metrics,
-        MockListener listener
+            Uuid clusterId,
+            OptionalInt localId,
+            KafkaRaftClient<String> client,
+            MockLog log,
+            MockNetworkChannel channel,
+            MockMessageQueue messageQueue,
+            MockTime time,
+            QuorumStateStore quorumStateStore,
+            Set<Integer> voters,
+            Set<Integer> bootstrapIds,
+            Metrics metrics,
+            MockListener listener,
+            VoterSet voterSet
     ) {
         this.clusterId = clusterId;
         this.localId = localId;
@@ -344,6 +347,7 @@ public final class RaftClientTestContext {
         this.bootstrapIds = bootstrapIds;
         this.metrics = metrics;
         this.listener = listener;
+        this.voterSet = voterSet;
     }
 
     int electionTimeoutMs() {
@@ -1156,12 +1160,15 @@ public final class RaftClientTestContext {
     public void advanceLocalLeaderHighWatermarkToLogEndOffset() throws InterruptedException {
         assertEquals(localId, currentLeader());
         long localLogEndOffset = log.endOffset().offset;
-        Set<Integer> followers = voterKeys();
+        Iterable<ReplicaKey> followers = () -> voterKeys()
+                .stream()
+                .filter(voterKey -> voterKey.id() != localId.getAsInt())
+                .iterator();
 
         // Send a request from every follower
-        for (int follower : followers) {
+        for (ReplicaKey follower : followers) {
             deliverRequest(
-                fetchRequest(currentEpoch(), follower, localLogEndOffset, currentEpoch(), 0)
+                fetchRequest(currentEpoch(), follower.id(), localLogEndOffset, currentEpoch(), 0)
             );
             pollUntilResponse();
             assertSentFetchPartitionResponse(Errors.NONE, currentEpoch(), localId);
@@ -1170,8 +1177,11 @@ public final class RaftClientTestContext {
         pollUntil(() -> OptionalLong.of(localLogEndOffset).equals(client.highWatermark()));
     }
 
-    private Set<Integer> voterKeys() {
-        Set<Integer> followers = voters.stream().filter(voter -> voter != localId.getAsInt()).collect(Collectors.toSet());
+    private Set<ReplicaKey> voterKeys() {
+        Set<ReplicaKey> followers = voterSet.voters().values()
+                .stream()
+                .map(VoterSet.VoterNode::voterKey)
+                .collect(Collectors.toSet());
         return followers;
     }
 
